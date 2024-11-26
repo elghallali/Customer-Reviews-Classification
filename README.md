@@ -46,7 +46,7 @@ Yelp_Review_Classification/
 │   ├── presentation.pptx   # Final presentation
 │   ├── final_report.pdf    # Final report
 ├── requirements.txt        # Dependencies for the project
-├── README.md               # Project documentation
+├── README.md               # Project documentation ```
 <div align="center">How to Run the Project</div>
 1. Clone the Repository
 git clone https://github.com/your_username/Yelp_Review_Classification.git
@@ -85,4 +85,4 @@ Visualization: Matplotlib, Seaborn
 This project is licensed under the MIT License.
 Feel free to contribute, modify, and use for educational purposes.
 
-<div align="center"> <h4>Happy Coding! 😊</h4> </div> ```
+<div align="center"> <h4>Happy Coding! 😊</h4> </div>  
