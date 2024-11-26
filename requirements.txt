@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 pandas
 numpy
 scikit-learn
@@ -8,14 +7,3 @@ transformers
 torch
 matplotlib
 seaborn
-=======
-pandas
-numpy
-scikit-learn
-nltk
-spacy
-transformers
-torch
-matplotlib
-seaborn
->>>>>>> ae05e57a2329a3fa190da021798a3548e742cb74
