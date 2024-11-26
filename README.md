@@ -48,7 +48,7 @@ Yelp_Review_Classification/
 ├── requirements.txt        # Dependencies for the project
 ├── README.md               # Project documentation
  ```
-<div align="center">How to Run the Project</div>
+<pre><div align="center">How to Run the Project</div>
 1. Clone the Repository
 git clone https://github.com/your_username/Yelp_Review_Classification.git
 cd Yelp_Review_Classification
@@ -87,3 +87,4 @@ This project is licensed under the MIT License.
 Feel free to contribute, modify, and use for educational purposes.
 
 <div align="center"> <h4>Happy Coding! 😊</h4> </div>
+</pre>
