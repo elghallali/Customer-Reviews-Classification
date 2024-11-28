@@ -1,4 +1,3 @@
-```markdown
 # <div align="center">**Yelp Review Classification**</div>
 
 <div align="center">
@@ -120,4 +119,3 @@ This project is licensed under the MIT License. Feel free to contribute, modify,
 <div align="center">
   <h4>Happy Coding! 😊</h4>
 </div>
-```
