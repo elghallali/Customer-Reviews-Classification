@@ -25,7 +25,7 @@ This project aims to classify Yelp customer reviews into **sentiment categories*
 ## <div align="center">Project Structure</div>
 
 ```plaintext
-Yelp_Review_Classification/
+Customer-Reviews-Classification/
 ├── data/
 │   ├── raw/                # Raw Yelp dataset (subset)
 │   ├── processed/          # Processed data (features and labels)
@@ -54,7 +54,7 @@ Yelp_Review_Classification/
 
 1. **Clone the Repository**
    ```bash
-   git clone https://github.com/your_username/Yelp_Review_Classification.git
+   git clone https://github.com/ennajari/Customer-Reviews-Classification.git
    cd Yelp_Review_Classification
    ```
 
