@@ -37,7 +37,7 @@ Customer-Reviews-Classification/
 ├── models/
 │   ├── classical_ml/       # Trained classical ML models
 │   │   ├── logistic_regression.pkl
-│   │   ├── random_forest.pkl
+│   │   ├── svm_model.pkl
 │   ├── transfer_learning/  # Fine-tuned transformer models
 │       ├── roberta_model/
 │       ├── xlnet_model/
