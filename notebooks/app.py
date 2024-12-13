@@ -8,10 +8,10 @@ from scipy.sparse import csr_matrix
 st.set_page_config(page_title="Customer Reviews Sentiment Analysis", layout="wide")
 
 def load_model(model_path):
-    if os.path.exists(model_path):
+    try:
         return joblib.load(model_path)
-    else:
-        st.error(f"Le fichier {model_path} n'a pas été trouvé.")
+    except Exception as e:
+        st.error(f"Le fichier {model_path} n'a pas été trouvé. Erreur: {str(e)}")
         return None
 
 def align_features(text_tfidf, expected_features):
@@ -38,25 +38,17 @@ def predict_sentiment(model, text, vectorizer, expected_features=59732):
         return None, None
     
     try:
-        # Vectorisation du texte
         text_tfidf = vectorizer.transform([text])
-        
-        # Alignement des features
         text_tfidf_aligned = align_features(text_tfidf, expected_features)
-        
-        # Prédiction
         prediction = model.predict(text_tfidf_aligned)
         
-        # Gestion différente pour SVM et Régression Logistique
         if hasattr(model, 'predict_proba'):
             prediction_proba = model.predict_proba(text_tfidf_aligned)[0]
         else:
-            prediction_proba = np.zeros(3)  # 3 classes: positive, neutral, negative
+            prediction_proba = np.zeros(3)
             prediction_proba[prediction[0]] = 1.0
         
-        # Convertir la prédiction numérique en label
         sentiment_label = get_sentiment_label(prediction[0])
-        
         return sentiment_label, prediction_proba
     
     except Exception as e:
@@ -64,16 +56,34 @@ def predict_sentiment(model, text, vectorizer, expected_features=59732):
         return None, None
 
 # Définir les chemins des modèles
-current_dir = os.path.dirname(os.path.abspath(__file__))
-models_base_path = os.path.join(current_dir, 'models')
+models_path = "/mount/src/customer-reviews-classification/models/classical_m"
+if not os.path.exists(models_path):
+    # Essayer un chemin relatif si le chemin absolu ne fonctionne pas
+    models_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models", "classical_m")
+
+# Afficher le chemin pour le débogage
+st.write(f"Chemin des modèles: {models_path}")
 
 # Charger les modèles
-logistic_regression_model = load_model(os.path.join(models_base_path, 'logistic_regression.pkl'))
-svm_model = load_model(os.path.join(models_base_path, 'svm_model.pkl'))
-tfidf_vectorizer = load_model(os.path.join(models_base_path, 'tfidf_vectorizer.pkl'))
+logistic_regression_path = os.path.join(models_path, "logistic_regression.pkl")
+svm_path = os.path.join(models_path, "svm_model.pkl")
+vectorizer_path = os.path.join(models_path, "tfidf_vectorizer.pkl")
+
+# Vérifier l'existence des fichiers
+for path in [logistic_regression_path, svm_path, vectorizer_path]:
+    if not os.path.exists(path):
+        st.error(f"Fichier non trouvé: {path}")
+
+logistic_regression_model = load_model(logistic_regression_path)
+svm_model = load_model(svm_path)
+tfidf_vectorizer = load_model(vectorizer_path)
 
 # Interface Streamlit
 st.title("Customer Reviews Sentiment Analysis")
+
+if not all([logistic_regression_model, svm_model, tfidf_vectorizer]):
+    st.error("Certains modèles n'ont pas pu être chargés. Vérifiez que tous les fichiers .pkl sont présents dans le dossier models/classical_m/")
+    st.stop()
 
 st.sidebar.header("Choisir un modèle")
 model_choice = st.sidebar.selectbox("Sélectionnez un modèle", ["Logistic Regression", "SVM"])
@@ -87,43 +97,37 @@ user_input = st.sidebar.text_area(
 if st.sidebar.button("Prédire"):
     model = logistic_regression_model if model_choice == "Logistic Regression" else svm_model
     
-    if model is None:
-        st.error("Le modèle n'a pas pu être chargé.")
-    else:
-        sentiment_label, prediction_proba = predict_sentiment(model, user_input, tfidf_vectorizer)
+    sentiment_label, prediction_proba = predict_sentiment(model, user_input, tfidf_vectorizer)
+    
+    if sentiment_label is not None:
+        col1, col2 = st.columns([2, 1])
         
-        if sentiment_label is not None:
-            col1, col2 = st.columns([2, 1])
+        with col1:
+            st.write("### Texte analysé")
+            st.write(user_input)
             
-            with col1:
-                st.write("### Texte analysé")
-                st.write(user_input)
-                
-                st.write("### Résultats de l'analyse")
-                st.write(f"**Sentiment prédit :** {sentiment_label}")
-            
-            with col2:
-                # Affichage des probabilités avec des barres de progression
-                st.write("### Probabilités par classe")
-                sentiment_labels = ['positive', 'neutral', 'negative']
-                for label, prob in zip(sentiment_labels, prediction_proba):
-                    st.write(f"**{label.capitalize()}**")
-                    st.progress(float(prob))
-                    st.write(f"{prob*100:.2f}%")
+            st.write("### Résultats de l'analyse")
+            st.write(f"**Sentiment prédit :** {sentiment_label}")
+        
+        with col2:
+            st.write("### Probabilités par classe")
+            sentiment_labels = ['positive', 'neutral', 'negative']
+            for label, prob in zip(sentiment_labels, prediction_proba):
+                st.write(f"**{label.capitalize()}**")
+                st.progress(float(prob))
+                st.write(f"{prob*100:.2f}%")
 
-            # Afficher un message d'explication
-            if sentiment_label == "positive":
-                st.success("✨ Cette review est positive !")
-            elif sentiment_label == "negative":
-                st.error("😟 Cette review est négative.")
-            else:
-                st.info("😐 Cette review est neutre.")
+        if sentiment_label == "positive":
+            st.success("✨ Cette review est positive !")
+        elif sentiment_label == "negative":
+            st.error("😟 Cette review est négative.")
+        else:
+            st.info("😐 Cette review est neutre.")
 
-            # Si c'est un SVM, ajouter une note explicative
-            if model_choice == "SVM" and not hasattr(model, 'predict_proba'):
-                st.info("Note : Le modèle SVM actuel ne fournit pas de probabilités. Les valeurs affichées représentent uniquement la classe prédite.")
+        if model_choice == "SVM" and not hasattr(model, 'predict_proba'):
+            st.info("Note : Le modèle SVM actuel ne fournit pas de probabilités.")
 
-# Ajouter des informations sur le projet
+# Informations sur le projet
 st.sidebar.markdown("---")
 st.sidebar.header("À propos")
 st.sidebar.info("""
