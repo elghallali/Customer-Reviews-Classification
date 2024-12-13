@@ -7,3 +7,6 @@ transformers
 torch
 matplotlib
 seaborn
+streamlit
+joblib
+scipy
