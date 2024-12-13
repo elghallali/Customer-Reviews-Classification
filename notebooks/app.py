@@ -63,7 +63,7 @@ def predict_sentiment(model, text, expected_features=59732):
         return None, None
 
 # Charger les modèles
-models_base_path = 'C:/Users/abdel/Desktop/Customer-Reviews-Classification/models/classical_m'
+models_base_path = '../models/classical_m'
 logistic_regression_model = load_model(os.path.join(models_base_path, 'logistic_regression.pkl'))
 svm_model = load_model(os.path.join(models_base_path, 'svm_model.pkl'))
 tfidf_vectorizer = load_model(os.path.join(models_base_path, 'tfidf_vectorizer.pkl'))
