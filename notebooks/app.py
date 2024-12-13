@@ -134,4 +134,5 @@ st.sidebar.info("""
 Cette application utilise le Machine Learning pour analyser le sentiment des avis clients.
 - **Modèles disponibles :** Régression Logistique et SVM
 - **Classes de sentiment :** Positif, Neutre, Négatif
+- **by** Abdellah Ennajari/ abdelatif chakor / Yasine Ben Acha
 """)
