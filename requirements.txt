@@ -10,3 +10,4 @@ seaborn
 streamlit
 joblib
 scipy
+textblob
