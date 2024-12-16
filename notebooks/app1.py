@@ -73,56 +73,6 @@ class SentimentAnalyzer:
             'probabilities': probabilities
         })
 
-# Fonctions pour créer des graphiques
-def create_sentiment_distribution_chart(history):
-    sentiments = [entry['sentiment'] for entry in history if entry['sentiment'] != 'unknown']
-    if not sentiments:
-        return None
-    fig = px.histogram(
-        x=sentiments,
-        title="Distribution des sentiments",
-        color=sentiments,
-        color_discrete_map=SENTIMENT_COLORS
-    )
-    return fig
-
-def create_sentiment_probabilities_chart(history):
-    import pandas as pd
-
-    if not history:
-        return None
-
-    proba_data = []
-    for entry in history:
-        if entry['sentiment'] != 'unknown':
-            proba_data.append({
-                'Sentiment': entry['sentiment'],
-                'Negative': entry['probabilities'][0],
-                'Neutral': entry['probabilities'][1],
-                'Positive': entry['probabilities'][2]
-            })
-
-    if not proba_data:
-        return None
-
-    df = pd.DataFrame(proba_data)
-    df_melted = df.melt(
-        id_vars=['Sentiment'], 
-        var_name='Probability Type', 
-        value_name='Probability'
-    )
-
-    fig = px.bar(
-        df_melted, 
-        x='Sentiment', 
-        y='Probability', 
-        color='Probability Type',
-        title='Probabilités des Sentiments',
-        labels={'Probability': 'Probabilité'},
-        color_discrete_map=SENTIMENT_COLORS
-    )
-    return fig
-
 # Application principale
 def main():
     st.title("Analyseur de Sentiments - Customer Reviews")
@@ -159,15 +109,6 @@ def main():
                 st.success(f"Sentiment prédit : {sentiment.capitalize()}")
                 st.write(f"Probabilités : {np.round(probabilities, 2)}")
                 analyzer.log_history(text_input, sentiment, probabilities)
-
-            if show_charts:
-                sentiment_chart = create_sentiment_distribution_chart(analyzer.history)
-                if sentiment_chart:
-                    st.plotly_chart(sentiment_chart, use_container_width=True)
-
-                probabilities_chart = create_sentiment_probabilities_chart(analyzer.history)
-                if probabilities_chart:
-                    st.plotly_chart(probabilities_chart, use_container_width=True)
 
 if __name__ == "__main__":
     main()
