@@ -12,14 +12,14 @@ def get_project_root():
     current_file = os.path.abspath(__file__)
     return os.path.dirname(os.path.dirname(current_file))
 
-# Configuration de la page Streamlit
+# Streamlit page configuration
 st.set_page_config(
-    page_title="Analyseur de Sentiments",
+    page_title="Sentiment Analyzer",
     page_icon="🎭",
     layout="wide"
 )
 
-# Couleurs pour les graphiques
+# Colors for graphs
 SENTIMENT_COLORS = {
     'positive': '#2ecc71',
     'neutral': '#f1c40f',
@@ -34,12 +34,12 @@ class SentimentAnalyzer:
         self.setup_models()
 
     def setup_models(self):
-        """Charge les modèles de classification et le vectorizer avec une gestion d'erreurs améliorée."""
+        """Load classification models and vectorizer with improved error handling."""
         try:
-            # Chemins dynamiques des modèles
+            # Dynamic paths for models
             project_root = get_project_root()
             
-            # Liste des chemins possibles pour les modèles
+            # List of possible paths for model directories
             possible_model_dirs = [
                 os.path.join(project_root, "models", "classical_ml"),
                 os.path.join(project_root, "models", "classical_m"),
@@ -47,7 +47,7 @@ class SentimentAnalyzer:
                 os.path.join(os.path.dirname(project_root), "models")
             ]
 
-            # Trouver le bon répertoire de modèles
+            # Find the correct model directory
             models_dir = None
             for potential_dir in possible_model_dirs:
                 if os.path.exists(potential_dir):
@@ -55,10 +55,10 @@ class SentimentAnalyzer:
                     break
 
             if not models_dir:
-                st.error(f"Aucun répertoire de modèles trouvé. Chemins vérifiés : {possible_model_dirs}")
+                st.error(f"No model directory found. Checked paths: {possible_model_dirs}")
                 return
 
-            # Chemins des modèles
+            # Paths for models
             vectorizer_paths = [
                 os.path.join(models_dir, "tfidf_vectorizer.pkl"),
                 os.path.join(models_dir, "vectorizer.pkl")
@@ -72,35 +72,34 @@ class SentimentAnalyzer:
                 os.path.join(models_dir, "svm.pkl")
             ]
 
-            # Fonction pour charger le premier fichier existant
+            # Function to load the first existing file
             def load_first_existing_file(file_paths):
                 for path in file_paths:
                     if os.path.exists(path):
                         return joblib.load(path)
                 return None
 
-            # Chargement des modèles
+            # Load models
             self.vectorizer = load_first_existing_file(vectorizer_paths)
             self.models['logistic_regression'] = load_first_existing_file(lr_paths)
             self.models['svm'] = load_first_existing_file(svm_paths)
 
-            # Vérification que tous les modèles sont chargés
+            # Check that all models are loaded
             if not all([self.vectorizer, 
                         self.models.get('logistic_regression'), 
                         self.models.get('svm')]):
-                st.warning("Certains modèles n'ont pas été chargés correctement.")
-                st.info(f"Fichiers dans {models_dir}: {os.listdir(models_dir)}")
+                st.warning("Some models were not loaded correctly.")
+                st.info(f"Files in {models_dir}: {os.listdir(models_dir)}")
 
         except Exception as e:
-            st.error(f"Erreur lors du chargement des modèles : {str(e)}")
-            # Log l'erreur complète pour le débogage
+            st.error(f"Error loading models: {str(e)}")
             st.exception(e)
 
     def analyze_with_textblob(self, text):
-        """Analyse le sentiment en utilisant TextBlob."""
+        """Analyze sentiment using TextBlob."""
         try:
             if not isinstance(text, str):
-                raise ValueError("Le texte doit être une chaîne de caractères")
+                raise ValueError("Input must be a string")
                 
             blob = TextBlob(text)
             polarity = blob.sentiment.polarity
@@ -113,38 +112,38 @@ class SentimentAnalyzer:
                 return "neutral", [0.2, 0.6, 0.2]
                 
         except Exception as e:
-            st.error(f"Erreur TextBlob : {str(e)}")
+            st.error(f"TextBlob Error: {str(e)}")
             return "unknown", [0.0, 0.0, 0.0]
 
     def predict_sentiment(self, text, model_name):
-        """Prédit le sentiment à l'aide d'un modèle de machine learning."""
+        """Predict sentiment using a machine learning model."""
         try:
             if model_name not in self.models:
-                raise ValueError(f"Modèle {model_name} non trouvé")
+                raise ValueError(f"Model {model_name} not found")
 
             if not self.vectorizer:
-                raise ValueError("Vectorizer non chargé")
+                raise ValueError("Vectorizer not loaded")
 
-            # Vectorisation du texte
+            # Vectorize the text
             text_vectorized = self.vectorizer.transform([text])
             
-            # Prédiction
+            # Prediction
             model = self.models[model_name]
             prediction = model.predict(text_vectorized)
             probabilities = model.predict_proba(text_vectorized)[0]
             
-            # Conversion de la prédiction en label
+            # Convert prediction to label
             sentiment_labels = {0: "negative", 1: "neutral", 2: "positive"}
             sentiment = sentiment_labels.get(prediction[0], "unknown")
             
             return sentiment, probabilities
             
         except Exception as e:
-            st.error(f"Erreur de prédiction : {str(e)}")
+            st.error(f"Prediction Error: {str(e)}")
             return None, None
 
     def log_history(self, text, sentiment, probabilities):
-        """Enregistre l'analyse dans l'historique."""
+        """Log the analysis in history."""
         if sentiment and probabilities is not None:
             self.history.append({
                 'text': text,
@@ -153,7 +152,7 @@ class SentimentAnalyzer:
             })
 
 def create_sentiment_distribution_chart(history):
-    """Crée un graphique de distribution des sentiments."""
+    """Create a sentiment distribution chart."""
     if not history:
         return None
         
@@ -163,22 +162,22 @@ def create_sentiment_distribution_chart(history):
         
     fig = px.histogram(
         x=sentiments,
-        title="Distribution des Sentiments",
+        title="Sentiment Distribution",
         color=sentiments,
         color_discrete_map=SENTIMENT_COLORS,
-        labels={'x': 'Sentiment', 'count': 'Nombre d\'analyses'}
+        labels={'x': 'Sentiment', 'count': 'Number of Analyses'}
     )
     
     fig.update_layout(
         showlegend=False,
         xaxis_title="Sentiment",
-        yaxis_title="Nombre d'analyses"
+        yaxis_title="Number of Analyses"
     )
     
     return fig
 
 def create_sentiment_probabilities_chart(history):
-    """Crée un graphique des probabilités de sentiments."""
+    """Create a chart for sentiment probabilities."""
     if not history:
         return None
     
@@ -187,9 +186,9 @@ def create_sentiment_probabilities_chart(history):
         if entry['sentiment'] != 'unknown':
             proba_data.append({
                 'Sentiment': entry['sentiment'],
-                'Négatif': entry['probabilities'][0],
-                'Neutre': entry['probabilities'][1],
-                'Positif': entry['probabilities'][2]
+                'Negative': entry['probabilities'][0],
+                'Neutral': entry['probabilities'][1],
+                'Positive': entry['probabilities'][2]
             })
     
     if not proba_data:
@@ -198,65 +197,65 @@ def create_sentiment_probabilities_chart(history):
     df = pd.DataFrame(proba_data)
     df_melted = df.melt(
         id_vars=['Sentiment'],
-        var_name='Type de Probabilité',
-        value_name='Probabilité'
+        var_name='Probability Type',
+        value_name='Probability'
     )
     
     fig = px.bar(
         df_melted,
         x='Sentiment',
-        y='Probabilité',
-        color='Type de Probabilité',
-        title='Probabilités des Sentiments par Catégorie',
+        y='Probability',
+        color='Probability Type',
+        title='Sentiment Probabilities by Category',
         color_discrete_map={
-            'Négatif': SENTIMENT_COLORS['negative'],
-            'Neutre': SENTIMENT_COLORS['neutral'],
-            'Positif': SENTIMENT_COLORS['positive']
+            'Negative': SENTIMENT_COLORS['negative'],
+            'Neutral': SENTIMENT_COLORS['neutral'],
+            'Positive': SENTIMENT_COLORS['positive']
         }
     )
     
     fig.update_layout(
         xaxis_title="Sentiment",
-        yaxis_title="Probabilité"
+        yaxis_title="Probability"
     )
     
     return fig
 
 def main():
-    # Titre et description
-    st.title("🎭 Analyseur de Sentiments - Customer Reviews")
+    # Title and description
+    st.title("🎭 Sentiment Analyzer - Customer Reviews")
     st.markdown("""
-    Cette application utilise des modèles de Machine Learning pour analyser les sentiments des avis clients.
-    Vous pouvez choisir entre différents modèles d'analyse et visualiser les résultats.
+    This app uses machine learning models to analyze customer reviews.
+    You can choose between different models and visualize the results.
     """)
 
-    # Initialisation de l'analyseur
+    # Initialize the analyzer
     analyzer = SentimentAnalyzer()
 
-    # Interface utilisateur
+    # User interface
     with st.container():
         col1, col2 = st.columns([2, 1])
         
         with col1:
             text_input = st.text_area(
-                "Entrez votre texte ici",
+                "Enter your text here",
                 height=150,
-                placeholder="Tapez ou collez votre texte ici..."
+                placeholder="Type or paste your text here..."
             )
         
         with col2:
             model_choice = st.selectbox(
-                "Choisissez un modèle",
+                "Choose a model",
                 ["TextBlob", "Logistic Regression", "SVM"]
             )
-            show_charts = st.checkbox("Afficher les graphiques d'analyse", value=True)
+            show_charts = st.checkbox("Display analysis charts", value=True)
             
-            if st.button("Analyser", type="primary"):
+            if st.button("Analyze", type="primary"):
                 if not text_input:
-                    st.warning("⚠️ Veuillez entrer un texte à analyser.")
+                    st.warning("⚠️ Please enter text to analyze.")
                 else:
-                    with st.spinner("Analyse en cours..."):
-                        # Analyse selon le modèle choisi
+                    with st.spinner("Analyzing..."):
+                        # Analyze based on selected model
                         if model_choice == "TextBlob":
                             sentiment, probabilities = analyzer.analyze_with_textblob(text_input)
                         elif model_choice == "Logistic Regression":
@@ -264,25 +263,25 @@ def main():
                         else:  # SVM
                             sentiment, probabilities = analyzer.predict_sentiment(text_input, "svm")
 
-                        # Affichage des résultats
+                        # Display results
                         if sentiment and probabilities is not None:
-                            # Enregistrement dans l'historique
+                            # Log to history
                             analyzer.log_history(text_input, sentiment, probabilities)
                             
-                            # Affichage du résultat
+                            # Display results
                             sentiment_color = SENTIMENT_COLORS.get(sentiment, '#000000')
                             st.markdown(f"""
-                            ### Résultat de l'analyse
-                            - **Sentiment détecté:** <span style='color:{sentiment_color}'>{sentiment.upper()}</span>
-                            - **Probabilités:**
-                                - Négatif: {probabilities[0]:.2%}
-                                - Neutre: {probabilities[1]:.2%}
-                                - Positif: {probabilities[2]:.2%}
+                            ### Analysis Result
+                            - **Detected Sentiment:** <span style='color:{sentiment_color}'>{sentiment.upper()}</span>
+                            - **Probabilities:**
+                                - Negative: {probabilities[0]:.2%}
+                                - Neutral: {probabilities[1]:.2%}
+                                - Positive: {probabilities[2]:.2%}
                             """, unsafe_allow_html=True)
 
-    # Affichage des graphiques
+    # Display charts
     if show_charts and analyzer.history:
-        st.markdown("### Visualisation des Résultats")
+        st.markdown("### Results Visualization")
         col1, col2 = st.columns(2)
         
         with col1:
