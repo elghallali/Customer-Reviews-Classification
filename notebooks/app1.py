@@ -6,6 +6,12 @@ import numpy as np
 import plotly.express as px
 import pandas as pd
 
+# Improved configuration for model paths
+def get_project_root():
+    """Find the root directory of the project."""
+    current_file = os.path.abspath(__file__)
+    return os.path.dirname(os.path.dirname(current_file))
+
 # Configuration de la page Streamlit
 st.set_page_config(
     page_title="Analyseur de Sentiments",
@@ -20,10 +26,6 @@ SENTIMENT_COLORS = {
     'negative': '#e74c3c'
 }
 
-# Chemins des modèles
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MODELS_DIR = os.path.join(BASE_DIR, "models", "classical_ml")
-
 class SentimentAnalyzer:
     def __init__(self):
         self.models = {}
@@ -32,26 +34,67 @@ class SentimentAnalyzer:
         self.setup_models()
 
     def setup_models(self):
-        """Charge les modèles de classification et le vectorizer."""
+        """Charge les modèles de classification et le vectorizer avec une gestion d'erreurs améliorée."""
         try:
-            # Chemins des modèles
-            vectorizer_path = os.path.join(MODELS_DIR, "tfidf_vectorizer.pkl")
-            lr_path = os.path.join(MODELS_DIR, "logistic_regression.pkl")
-            svm_path = os.path.join(MODELS_DIR, "svm_model.pkl")
+            # Chemins dynamiques des modèles
+            project_root = get_project_root()
+            
+            # Liste des chemins possibles pour les modèles
+            possible_model_dirs = [
+                os.path.join(project_root, "models", "classical_ml"),
+                os.path.join(project_root, "models", "classical_m"),
+                os.path.join(project_root, "models"),
+                os.path.join(os.path.dirname(project_root), "models")
+            ]
 
-            # Vérification de l'existence des fichiers
-            if not all(os.path.exists(path) for path in [vectorizer_path, lr_path, svm_path]):
-                st.error(f"Certains fichiers modèles sont manquants dans : {MODELS_DIR}")
-                st.error(f"Fichiers disponibles : {os.listdir(MODELS_DIR) if os.path.exists(MODELS_DIR) else 'Dossier non trouvé'}")
+            # Trouver le bon répertoire de modèles
+            models_dir = None
+            for potential_dir in possible_model_dirs:
+                if os.path.exists(potential_dir):
+                    models_dir = potential_dir
+                    break
+
+            if not models_dir:
+                st.error(f"Aucun répertoire de modèles trouvé. Chemins vérifiés : {possible_model_dirs}")
                 return
 
+            # Chemins des modèles
+            vectorizer_paths = [
+                os.path.join(models_dir, "tfidf_vectorizer.pkl"),
+                os.path.join(models_dir, "vectorizer.pkl")
+            ]
+            lr_paths = [
+                os.path.join(models_dir, "logistic_regression.pkl"),
+                os.path.join(models_dir, "lr_model.pkl")
+            ]
+            svm_paths = [
+                os.path.join(models_dir, "svm_model.pkl"),
+                os.path.join(models_dir, "svm.pkl")
+            ]
+
+            # Fonction pour charger le premier fichier existant
+            def load_first_existing_file(file_paths):
+                for path in file_paths:
+                    if os.path.exists(path):
+                        return joblib.load(path)
+                return None
+
             # Chargement des modèles
-            self.vectorizer = joblib.load(vectorizer_path)
-            self.models['logistic_regression'] = joblib.load(lr_path)
-            self.models['svm'] = joblib.load(svm_path)
+            self.vectorizer = load_first_existing_file(vectorizer_paths)
+            self.models['logistic_regression'] = load_first_existing_file(lr_paths)
+            self.models['svm'] = load_first_existing_file(svm_paths)
+
+            # Vérification que tous les modèles sont chargés
+            if not all([self.vectorizer, 
+                        self.models.get('logistic_regression'), 
+                        self.models.get('svm')]):
+                st.warning("Certains modèles n'ont pas été chargés correctement.")
+                st.info(f"Fichiers dans {models_dir}: {os.listdir(models_dir)}")
 
         except Exception as e:
             st.error(f"Erreur lors du chargement des modèles : {str(e)}")
+            # Log l'erreur complète pour le débogage
+            st.exception(e)
 
     def analyze_with_textblob(self, text):
         """Analyse le sentiment en utilisant TextBlob."""
