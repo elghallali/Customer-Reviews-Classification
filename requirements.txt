@@ -11,3 +11,4 @@ streamlit
 joblib
 scipy
 textblob
+plotly 
