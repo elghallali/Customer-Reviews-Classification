@@ -129,7 +129,7 @@ def main():
     st.write("Cette application utilise des modèles de Machine Learning pour analyser les sentiments des avis clients.")
 
     # Chemin vers les modèles
-    models_path = os.path.abspath("./models/classical_ml")  # Vérifiez ce chemin selon votre structure
+    models_path = "./models/classical_ml"
 
     if not os.path.exists(models_path):
         st.error(f"Le chemin des modèles n'existe pas : {models_path}")
