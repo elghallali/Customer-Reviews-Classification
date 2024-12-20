@@ -87,10 +87,11 @@ Customer-Reviews-Classification/
 
 | Model                | Accuracy | Precision | Recall | F1-Score |
 |----------------------|----------|-----------|--------|----------|
-| Logistic Regression  | 83.2%    | 82.4%     | 81.9%  | 82.1%    |
-| Random Forest        | 85.1%    | 84.7%     | 83.8%  | 84.2%    |
-| RoBERTa              | 92.3%    | 92.1%     | 91.7%  | 91.9%    |
-| XLNet                | 93.7%    | 93.5%     | 93.2%  | 93.3%    |
+| Logistic Regression  | 84.0%    | 81.0%     | 78.0%  | 79.0%    |
+| SVM                  | 91.0%    | 90.0%     | 88.0%  | 89.0%    |
+| RoBERTa              | 85.0%    | 84.0%     | 83.0%  | 83.0%    |
+| XLNet                | 84.0%    | 83.0%     | 82.0%  | 82.0%    |
+
 
 ---
 
