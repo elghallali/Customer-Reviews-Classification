@@ -12,3 +12,5 @@ joblib
 scipy
 textblob
 plotly 
+reportlab
+wordcloud
