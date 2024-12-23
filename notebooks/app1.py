@@ -122,4 +122,4 @@ except Exception as e:
 
 # Footer
 st.markdown("---")
-st.markdown("*Student At ENIAD*")
+st.markdown("*Developer Student At ENIAD*")
