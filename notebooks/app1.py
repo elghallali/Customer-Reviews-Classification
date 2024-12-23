@@ -5,167 +5,115 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.metrics import accuracy_score, classification_report
-import numpy as np
-from datetime import datetime
 
 # Configuration
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="Customer Review Classification", page_icon="🖊")
 
 # Paths
 BASE_DIR = Path(__file__).parent.parent
 MODELS = {
     "Logistic Regression": "logistic_regression.pkl",
-    "SVM": "svm_model.pkl",
-    "Random Forest": "random_forest.pkl"  # Added model
+    "SVM": "svm_model.pkl"
 }
-
 VECTORIZER_PATH = BASE_DIR / "models/classical_m/tfidf_vectorizer.pkl"
-
-# Custom theme and styling
-st.markdown("""
-    <style>
-    .stAlert {border-radius: 10px;}
-    .stButton>button {border-radius: 20px;}
-    </style>
-    """, unsafe_allow_html=True)
 
 try:
     # Load vectorizer
     vectorizer = joblib.load(VECTORIZER_PATH)
-    
+
     # Interface
-    st.title("📊 Customer Review Classification")
-    
-    # Sidebar configuration
-    st.sidebar.header("Settings")
+    st.title("🖊 Customer Review Classification")
+
+    # Model selection
     selected_model = st.sidebar.selectbox(
-        "Choose Model",
+        "Choose a model",
         list(MODELS.keys())
     )
-    
-    confidence_threshold = st.sidebar.slider(
-        "Confidence Threshold",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.5,
-        step=0.1
-    )
-    
+
     # Load selected model
     model_path = BASE_DIR / f"models/classical_m/{MODELS[selected_model]}"
     model = joblib.load(model_path)
-    
-    # Main interface
-    tab1, tab2 = st.tabs(["Single Review", "Batch Analysis"])
-    
-    with tab1:
-        example_review = st.text_area(
-            "Enter customer review",
-            placeholder="Type your review here...",
-            height=150
-        )
-        
-        if example_review:
-            # Prediction
-            example_review_vectorized = vectorizer.transform([example_review])
-            prediction = model.predict(example_review_vectorized)
-            proba = model.predict_proba(example_review_vectorized)[0]
-            
-            # Results display
-            col1, col2 = st.columns(2)
-            with col1:
-                sentiment = "🟢 Positive" if prediction[0] == 1 else "🔴 Negative"
-                confidence = max(proba) * 100
-                
-                if confidence >= confidence_threshold * 100:
-                    st.markdown(f"### Prediction: {sentiment}")
-                    st.markdown(f"### Confidence: {confidence:.1f}%")
-                else:
-                    st.warning("⚠️ Prediction below confidence threshold")
-            
-            with col2:
-                # Confidence visualization
-                fig = go.Figure(go.Bar(
-                    x=['Negative', 'Positive'],
-                    y=[proba[0]*100, proba[1]*100],
-                    marker_color=['#ff9999', '#99ff99']
-                ))
-                fig.update_layout(
-                    title="Classification Probabilities",
-                    yaxis_title="Percentage (%)",
-                    height=300
-                )
-                st.plotly_chart(fig, use_container_width=True)
-    
-    with tab2:
-        uploaded_file = st.file_uploader("Upload CSV file with reviews", type=['csv'])
-        if uploaded_file:
-            df = pd.read_csv(uploaded_file)
-            if 'review' in df.columns:
-                with st.spinner('Processing reviews...'):
-                    # Batch prediction
-                    vectorized_reviews = vectorizer.transform(df['review'])
-                    df['prediction'] = model.predict(vectorized_reviews)
-                    probas = model.predict_proba(vectorized_reviews)
-                    df['confidence'] = np.max(probas, axis=1)
-                    
-                    # Results summary
-                    st.markdown("### Batch Analysis Results")
-                    col1, col2 = st.columns(2)
-                    
-                    with col1:
-                        positive_count = len(df[df['prediction'] == 1])
-                        negative_count = len(df[df['prediction'] == 0])
-                        
-                        fig = px.pie(
-                            values=[positive_count, negative_count],
-                            names=['Positive', 'Negative'],
-                            title="Review Distribution"
-                        )
-                        st.plotly_chart(fig)
-                    
-                    with col2:
-                        fig = px.histogram(
-                            df,
-                            x='confidence',
-                            title="Confidence Distribution"
-                        )
-                        st.plotly_chart(fig)
-                    
-                    # Download results
-                    csv = df.to_csv(index=False)
-                    st.download_button(
-                        "Download Results",
-                        csv,
-                        f"classification_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        "text/csv"
-                    )
-            else:
-                st.error("CSV must contain a 'review' column")
 
-    # Performance analysis
-    if st.button("📈 Analyze Performance"):
+    # Input area
+    example_review = st.text_area(
+        "Enter a customer review",
+        placeholder="Type your review here...",
+        height=150
+    )
+
+    if example_review:
+        # Prediction
+        example_review_vectorized = vectorizer.transform([example_review])
+        prediction = model.predict(example_review_vectorized)
+        proba = model.predict_proba(example_review_vectorized)[0]
+
+        # Display results
+        col1, col2 = st.columns(2)
+        with col1:
+            sentiment = "🟢 Positive" if prediction[0] == 1 else ("🔴 Negative" if prediction[0] == 0 else "🟡 Neutral")
+            st.markdown(f"### Prediction: {sentiment}")
+            st.markdown(f"### Confidence: {max(proba) * 100:.1f}%")
+
+        with col2:
+            # Confidence chart
+            fig = go.Figure(go.Bar(
+                x=['Negative', 'Neutral', 'Positive'],
+                y=[proba[0]*100, proba[1]*100, proba[2]*100],
+                marker_color=['#ff9999', '#ffcc66', '#99ff99']
+            ))
+            fig.update_layout(
+                title="Classification Probabilities",
+                yaxis_title="Percentage (%)"
+            )
+            st.plotly_chart(fig)
+
+    # Metrics and additional analysis
+    if st.button("📊 Analyze Performance"):
+        # Dummy data for demonstration
         metrics = {
             'Precision': 0.85,
             'Recall': 0.82,
-            'F1-Score': 0.83,
-            'Accuracy': 0.84
+            'F1-Score': 0.83
         }
-        
+
         # Radar chart
         fig = go.Figure()
         fig.add_trace(go.Scatterpolar(
             r=list(metrics.values()),
             theta=list(metrics.keys()),
-            fill='toself',
-            name=selected_model
+            fill='toself'
         ))
         fig.update_layout(
             polar=dict(radialaxis=dict(visible=True, range=[0, 1])),
-            title="Performance Metrics",
-            height=400
+            title="Performance Metrics"
         )
         st.plotly_chart(fig)
+
+        # Display classification report (dummy example)
+        st.subheader("Detailed Classification Report")
+        report = """ 
+Precision: 0.85
+Recall: 0.82
+F1-Score: 0.83
+Accuracy: 0.84
+        """
+        st.code(report, language='text')
+
+    # Add data upload for bulk prediction
+    st.sidebar.subheader("Bulk Prediction")
+    uploaded_file = st.sidebar.file_uploader("Upload a CSV file", type=['csv'])
+    if uploaded_file is not None:
+        data = pd.read_csv(uploaded_file)
+        if 'review' in data.columns:
+            predictions = model.predict(vectorizer.transform(data['review']))
+            probabilities = model.predict_proba(vectorizer.transform(data['review']))
+            data['prediction'] = predictions
+            data['confidence'] = probabilities.max(axis=1) * 100
+            st.subheader("Bulk Prediction Results")
+            st.dataframe(data)
+            st.download_button("Download Results", data.to_csv(index=False), "results.csv", "text/csv")
+        else:
+            st.sidebar.error("CSV file must contain a 'review' column.")
 
 except FileNotFoundError as e:
     st.error(f"❌ Error: File not found\n{str(e)}")
@@ -174,4 +122,4 @@ except Exception as e:
 
 # Footer
 st.markdown("---")
-st.markdown("*Developed with Streamlit and Scikit-learn*")
+st.markdown("*Student At ENIAD*")
