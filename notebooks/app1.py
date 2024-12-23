@@ -19,6 +19,11 @@ st.markdown("""
         background-color: #4CAF50;
         color: white;
         border-radius: 5px;
+        padding: 10px 20px;
+    }
+    .big-button {
+        font-size: 20px !important;
+        padding: 20px 30px !important;
     }
     .sidebar .sidebar-content {
         background-color: #f0f2f6;
@@ -34,6 +39,17 @@ MODELS = {
     "Random Forest": "random_forest.pkl"
 }
 VECTORIZER_PATH = BASE_DIR / "models/classical_m/tfidf_vectorizer.pkl"
+
+def get_prediction_label(probabilities):
+    max_prob_index = np.argmax(probabilities)
+    max_prob = probabilities[max_prob_index]
+    
+    if max_prob_index == 0:
+        return "🔴 Négatif", max_prob
+    elif max_prob_index == 1:
+        return "🟡 Neutre", max_prob
+    else:
+        return "🟢 Positif", max_prob
 
 def plot_confidence_distribution(probabilities):
     fig = go.Figure()
@@ -72,6 +88,12 @@ def analyze_review_length(review):
         'Valeur': [words, chars, sentences]
     })
 
+def clear_prediction():
+    if 'example_review' in st.session_state:
+        del st.session_state.example_review
+    if 'prediction_made' in st.session_state:
+        del st.session_state.prediction_made
+
 def track_predictions(prediction, confidence):
     if 'prediction_history' not in st.session_state:
         st.session_state.prediction_history = []
@@ -93,8 +115,7 @@ try:
     tab1, tab2, tab3 = st.tabs(["Prédiction", "Analyse en Masse", "Statistiques"])
     
     with tab1:
-        # Model selection
-        col1, col2 = st.columns([2, 1])
+        col1, col2, col3 = st.columns([2, 1, 1])
         with col1:
             selected_model = st.selectbox(
                 "Choisir un modèle",
@@ -106,6 +127,9 @@ try:
                 "Langue",
                 ["Français", "English", "Español"]
             )
+        
+        with col3:
+            st.button("Effacer", on_click=clear_prediction, key="clear_btn")
 
         # Load selected model
         model_path = BASE_DIR / f"models/classical_m/{MODELS[selected_model]}"
@@ -115,34 +139,59 @@ try:
         example_review = st.text_area(
             "Entrez un avis client",
             placeholder="Tapez votre avis ici...",
-            height=150
+            height=150,
+            key="review_input"
         )
 
-        if example_review:
+        # Buttons
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            predict_btn = st.button("📊 Analyser", use_container_width=True)
+        with col2:
+            save_btn = st.button("💾 Sauvegarder", use_container_width=True)
+        with col3:
+            export_btn = st.button("📤 Exporter", use_container_width=True)
+
+        if predict_btn and example_review:
+            st.session_state.prediction_made = True
+            
             # Text analysis
             length_stats = analyze_review_length(example_review)
             
             # Prediction
             example_review_vectorized = vectorizer.transform([example_review])
-            prediction = model.predict(example_review_vectorized)
             proba = model.predict_proba(example_review_vectorized)[0]
+            sentiment_label, confidence = get_prediction_label(proba)
             
             # Track prediction
-            track_predictions(prediction[0], max(proba))
+            track_predictions(sentiment_label, confidence)
 
             # Display results
             col1, col2 = st.columns(2)
             with col1:
-                sentiment = "🟢 Positif" if prediction[0] == 1 else ("🔴 Négatif" if prediction[0] == 0 else "🟡 Neutre")
-                st.markdown(f"### Prédiction: {sentiment}")
-                st.markdown(f"### Confiance: {max(proba) * 100:.1f}%")
+                st.markdown(f"### Prédiction: {sentiment_label}")
+                st.markdown(f"### Confiance: {confidence * 100:.1f}%")
                 
-                # Statistiques du texte
                 st.markdown("### Analyse du texte")
                 st.dataframe(length_stats, hide_index=True)
 
             with col2:
                 st.plotly_chart(plot_confidence_distribution(proba))
+
+        if save_btn and example_review:
+            if 'saved_reviews' not in st.session_state:
+                st.session_state.saved_reviews = []
+            st.session_state.saved_reviews.append(example_review)
+            st.success("Avis sauvegardé!")
+
+        if export_btn and 'saved_reviews' in st.session_state:
+            df = pd.DataFrame(st.session_state.saved_reviews, columns=['review'])
+            st.download_button(
+                "📥 Télécharger les avis sauvegardés",
+                df.to_csv(index=False),
+                "avis_sauvegardes.csv",
+                "text/csv"
+            )
 
     with tab2:
         st.subheader("Prédiction en Masse")
@@ -156,16 +205,15 @@ try:
                 probabilities = []
                 
                 for i, review in enumerate(data['review']):
-                    pred = model.predict(vectorizer.transform([review]))
-                    prob = model.predict_proba(vectorizer.transform([review]))
-                    predictions.append(pred[0])
-                    probabilities.append(prob[0])
+                    prob = model.predict_proba(vectorizer.transform([review]))[0]
+                    sentiment_label, confidence = get_prediction_label(prob)
+                    predictions.append(sentiment_label)
+                    probabilities.append(confidence)
                     progress_bar.progress((i + 1) / len(data))
                 
                 data['prediction'] = predictions
-                data['confidence'] = [max(p) * 100 for p in probabilities]
+                data['confidence'] = [p * 100 for p in probabilities]
                 
-                # Visualisations
                 col1, col2 = st.columns(2)
                 with col1:
                     fig = px.pie(data, names='prediction', title='Distribution des Prédictions')
@@ -182,19 +230,22 @@ try:
 
     with tab3:
         if 'prediction_history' in st.session_state and st.session_state.prediction_history:
-            history_df = pd.DataFrame(st.session_state.prediction_history)
-            
             st.subheader("Historique des Prédictions")
             
-            # Graphique temporel
-            fig = px.line(history_df, x='timestamp', y='confidence', title='Évolution de la Confiance')
+            history_df = pd.DataFrame(st.session_state.prediction_history)
+            
+            fig = px.line(history_df, x='timestamp', y='confidence', 
+                         title='Évolution de la Confiance')
             st.plotly_chart(fig)
             
-            # Distribution des prédictions
             pred_counts = history_df['prediction'].value_counts()
             fig = px.pie(values=pred_counts.values, names=pred_counts.index, 
                         title='Distribution des Prédictions')
             st.plotly_chart(fig)
+            
+            if st.button("🗑️ Effacer l'historique"):
+                st.session_state.prediction_history = []
+                st.experimental_rerun()
         else:
             st.info("Aucun historique disponible. Commencez à faire des prédictions!")
 
