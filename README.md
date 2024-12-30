@@ -116,7 +116,7 @@ Customer-Reviews-Classification/
 ## <div align="center">License</div>
 
 This project is licensed under the MIT License. Feel free to contribute, modify, and use for educational purposes.
-
+author:Abdellah Ennajari <br> Abdellah.ennajari.23@ump.ac.ma 
 <div align="center">
   <h4>Happy Coding! 😊</h4>
 </div>
