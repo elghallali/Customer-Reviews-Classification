@@ -256,4 +256,4 @@ except Exception as e:
 
 # Footer
 st.markdown("---")
-st.markdown("*Développé par ENIAD*")
+st.markdown("*Developped by Abdellah Ennajari*")
