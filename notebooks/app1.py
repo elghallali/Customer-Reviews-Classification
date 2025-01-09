@@ -1,216 +1,259 @@
-import os
-import joblib
 import streamlit as st
-from textblob import TextBlob
-import numpy as np
+import joblib
+from pathlib import Path
+import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
+from sklearn.metrics import accuracy_score, classification_report
 import numpy as np
+from datetime import datetime
+import altair as alt
 
-# Couleurs pour les graphiques
-SENTIMENT_COLORS = {
-    'positive': '#2ecc71',
-    'neutral': '#f1c40f',
-    'negative': '#e74c3c'
+# Configuration
+st.set_page_config(layout="wide", page_title="Customer Review Classification", page_icon="🖊")
+
+# Style personnalisé
+st.markdown("""
+    <style>
+    .stButton>button {
+        background-color: #4CAF50;
+        color: white;
+        border-radius: 5px;
+        padding: 10px 20px;
+    }
+    .big-button {
+        font-size: 20px !important;
+        padding: 20px 30px !important;
+    }
+    .sidebar .sidebar-content {
+        background-color: #f0f2f6;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+# Paths
+BASE_DIR = Path(__file__).parent.parent
+MODELS = {
+    "Logistic Regression": "logistic_regression.pkl",
+    "SVM": "svm_model.pkl",
+    "Random Forest": "random_forest.pkl"
 }
+VECTORIZER_PATH = BASE_DIR / "models/classical_m/tfidf_vectorizer.pkl"
 
-class SentimentAnalyzer:
-    def __init__(self, models_path):
-        self.models_path = models_path
-        self.models = {}
-        self.vectorizer = None
-        self.history = []
+def get_prediction_label(probabilities):
+    max_prob_index = np.argmax(probabilities)
+    max_prob = probabilities[max_prob_index]
+    
+    if max_prob_index == 0:
+        return "🔴 Négatif", max_prob
+    elif max_prob_index == 1:
+        return "🟡 Neutre", max_prob
+    else:
+        return "🟢 Positif", max_prob
 
-    def setup_models(self):
-        """
-        Charge les modèles de classification et le vectorizer.
-        """
-        try:
-            self.vectorizer = joblib.load(os.path.join(self.models_path, "tfidf_vectorizer.pkl"))
-            self.models['logistic_regression'] = joblib.load(os.path.join(self.models_path, "logistic_regression.pkl"))
-            self.models['svm'] = joblib.load(os.path.join(self.models_path, "svm_model.pkl"))
-        except Exception as e:
-            st.error(f"Erreur lors du chargement des modèles : {e}")
+def plot_confidence_distribution(probabilities):
+    fig = go.Figure()
+    
+    categories = ['Négatif', 'Neutre', 'Positif']
+    colors = ['#ff6b6b', '#ffd93d', '#6bcb77']
+    
+    for i, (cat, prob, color) in enumerate(zip(categories, probabilities, colors)):
+        fig.add_trace(go.Bar(
+            name=cat,
+            y=[cat],
+            x=[prob * 100],
+            orientation='h',
+            marker_color=color,
+            text=f'{prob * 100:.1f}%',
+            textposition='auto',
+        ))
 
-    def analyze_with_textblob(self, text):
-        """Analyse le sentiment en utilisant TextBlob."""
-        try:
-            # Assurez-vous que le texte est une chaîne de caractères
-            if isinstance(text, str):
-                blob = TextBlob(text)
-                polarity = blob.sentiment.polarity
-                if polarity > 0.1:
-                    return "positive", [0.7, 0.2, 0.1]
-                elif polarity < -0.1:
-                    return "negative", [0.1, 0.2, 0.7]
-                else:
-                    return "neutral", [0.2, 0.6, 0.2]
-            else:
-                st.error("TextBlob ne peut analyser que des chaînes de texte.")
-                return "unknown", [0.0, 0.0, 0.0]
-        except Exception as e:
-            st.error(f"Erreur TextBlob : {e}")
-            return "unknown", [0.0, 0.0, 0.0]
-
-    def predict_sentiment(self, text, model_name):
-        """Prédit le sentiment à l'aide d'un modèle de machine learning."""
-        if model_name not in self.models:
-            st.error(f"Modèle {model_name} non trouvé.")
-            return None, None
-
-        if not self.vectorizer:
-            st.error("Vectorizer non chargé !")
-            return None, None
-
-        try:
-            model = self.models[model_name]
-            # Transformer le texte en vecteur TF-IDF
-            if isinstance(text, str):
-                text_tfidf = self.vectorizer.transform([text])
-            elif isinstance(text, np.ndarray):
-                text_tfidf = text
-            else:
-                st.error("Erreur : le texte doit être une chaîne de caractères ou un tableau numpy.")
-                return None, None
-
-            # Prédiction et probabilités
-            prediction = model.predict(text_tfidf)
-            probabilities = model.predict_proba(text_tfidf)[0]
-            
-            # Convertir la prédiction en label de sentiment
-            sentiment_labels = {
-                0: "negative",
-                1: "neutral",
-                2: "positive"
-            }
-            sentiment = sentiment_labels.get(prediction[0], "unknown")
-            
-            return sentiment, probabilities
-        except Exception as e:
-            st.error(f"Erreur prédiction : {e}")
-            return None, None
-
-    def log_history(self, text, sentiment, probabilities):
-        """Enregistre l'analyse dans l'historique."""
-        self.history.append({
-            'text': text,
-            'sentiment': sentiment,
-            'probabilities': probabilities
-        })
-
-# Fonctions pour créer des graphiques
-def create_sentiment_distribution_chart(history):
-    """Crée un graphique de distribution des sentiments."""
-    sentiments = [entry['sentiment'] for entry in history if entry['sentiment'] != 'unknown']
-    if not sentiments:
-        return None
-    fig = px.histogram(
-        x=sentiments,
-        title="Distribution des sentiments",
-        color=sentiments,
-        color_discrete_map=SENTIMENT_COLORS
+    fig.update_layout(
+        title="Distribution des Probabilités",
+        xaxis_title="Probabilité (%)",
+        yaxis_title="Sentiment",
+        barmode='group',
+        height=250,
+        showlegend=False
     )
     return fig
 
-def create_sentiment_probabilities_chart(history):
-    """Crée un graphique des probabilités de sentiments."""
-    import pandas as pd
-    import plotly.express as px
+def analyze_review_length(review):
+    words = len(review.split())
+    chars = len(review)
+    sentences = len([s for s in review.split('.') if s.strip()])
     
-    if not history:
-        return None
-    
-    # Extraire les probabilités pour chaque sentiment
-    proba_data = []
-    for entry in history:
-        if entry['sentiment'] != 'unknown':
-            proba_data.append({
-                'Sentiment': entry['sentiment'],
-                'Negative': entry['probabilities'][0],
-                'Neutral': entry['probabilities'][1],
-                'Positive': entry['probabilities'][2]
-            })
-    
-    if not proba_data:
-        return None
-    
-    # Créer un DataFrame pandas
-    df = pd.DataFrame(proba_data)
-    
-    # Convertir le DataFrame en format long pour plotly
-    df_melted = df.melt(
-        id_vars=['Sentiment'], 
-        var_name='Probability Type', 
-        value_name='Probability'
-    )
-    
-    # Créer un graphique à barres groupées
-    fig = px.bar(
-        df_melted, 
-        x='Sentiment', 
-        y='Probability', 
-        color='Probability Type',
-        title='Probabilités des Sentiments',
-        labels={'Probability': 'Probabilité'},
-        color_discrete_map={
-            'Negative': SENTIMENT_COLORS['negative'],
-            'Neutral': SENTIMENT_COLORS['neutral'],
-            'Positive': SENTIMENT_COLORS['positive']
-        }
-    )
-    
-    return fig
+    return pd.DataFrame({
+        'Métrique': ['Mots', 'Caractères', 'Phrases'],
+        'Valeur': [words, chars, sentences]
+    })
 
-def main():
-    st.title("Analyseur de Sentiments - Customer Reviews")
-    st.write("Cette application utilise des modèles de Machine Learning pour analyser les sentiments des avis clients.")
+def clear_prediction():
+    if 'example_review' in st.session_state:
+        del st.session_state.example_review
+    if 'prediction_made' in st.session_state:
+        del st.session_state.prediction_made
 
-    # Chemin vers les modèles (à ajuster selon votre configuration)
-    models_path = r"../models/classical_m"  # Chemin relatif recommandé
+def track_predictions(prediction, confidence):
+    if 'prediction_history' not in st.session_state:
+        st.session_state.prediction_history = []
     
-    # Vérifier si le chemin existe
-    if not os.path.exists(models_path):
-        st.error(f"Le chemin des modèles n'existe pas : {models_path}")
-        return
+    st.session_state.prediction_history.append({
+        'timestamp': datetime.now(),
+        'prediction': prediction,
+        'confidence': confidence
+    })
 
-    analyzer = SentimentAnalyzer(models_path)
-    analyzer.setup_models()
+try:
+    # Load vectorizer
+    vectorizer = joblib.load(VECTORIZER_PATH)
 
-    # Entrée utilisateur
-    text_input = st.text_area("Entrez un texte ou un avis client ici")
-    model_choice = st.selectbox("Choisissez un modèle", ["TextBlob", "Logistic Regression", "SVM"])
-    show_charts = st.checkbox("Afficher les graphiques d'analyse")
+    # Interface
+    st.title("🖊 Classification des Avis Clients")
+    
+    # Tabs
+    tab1, tab2, tab3 = st.tabs(["Prédiction", "Analyse en Masse", "Statistiques"])
+    
+    with tab1:
+        col1, col2, col3 = st.columns([2, 1, 1])
+        with col1:
+            selected_model = st.selectbox(
+                "Choisir un modèle",
+                list(MODELS.keys())
+            )
+            
+        with col2:
+            language = st.selectbox(
+                "Langue",
+                ["Français", "English", "Español"]
+            )
+        
+        with col3:
+            st.button("Effacer", on_click=clear_prediction, key="clear_btn")
 
-    if st.button("Analyser"):
-        if not text_input:
-            st.warning("Veuillez entrer un texte.")
-        else:
-            # Analyse du texte avec le modèle choisi
-            if model_choice == "TextBlob":
-                sentiment, probabilities = analyzer.analyze_with_textblob(text_input)
-            elif model_choice == "Logistic Regression":
-                sentiment, probabilities = analyzer.predict_sentiment(text_input, "logistic_regression")
-            elif model_choice == "SVM":
-                sentiment, probabilities = analyzer.predict_sentiment(text_input, "svm")
-            else:
-                sentiment, probabilities = "unknown", [0.0, 0.0, 0.0]
+        # Load selected model
+        model_path = BASE_DIR / f"models/classical_m/{MODELS[selected_model]}"
+        model = joblib.load(model_path)
 
-            # Afficher le résultat
-            if sentiment:
-                st.success(f"Sentiment prédit : {sentiment.capitalize()}")
-                st.write(f"Probabilités : {np.round(probabilities, 2)}")
-                analyzer.log_history(text_input, sentiment, probabilities)
+        # Input area
+        example_review = st.text_area(
+            "Entrez un avis client",
+            placeholder="Tapez votre avis ici...",
+            height=150,
+            key="review_input"
+        )
 
-            # Afficher les graphiques
-            if show_charts:
-                # Distribution des sentiments
-                sentiment_chart = create_sentiment_distribution_chart(analyzer.history)
-                if sentiment_chart:
-                    st.plotly_chart(sentiment_chart, use_container_width=True)
+        # Buttons
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            predict_btn = st.button("📊 Analyser", use_container_width=True)
+        with col2:
+            save_btn = st.button("💾 Sauvegarder", use_container_width=True)
+        with col3:
+            export_btn = st.button("📤 Exporter", use_container_width=True)
+
+        if predict_btn and example_review:
+            st.session_state.prediction_made = True
+            
+            # Text analysis
+            length_stats = analyze_review_length(example_review)
+            
+            # Prediction
+            example_review_vectorized = vectorizer.transform([example_review])
+            proba = model.predict_proba(example_review_vectorized)[0]
+            sentiment_label, confidence = get_prediction_label(proba)
+            
+            # Track prediction
+            track_predictions(sentiment_label, confidence)
+
+            # Display results
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"### Prédiction: {sentiment_label}")
+                st.markdown(f"### Confiance: {confidence * 100:.1f}%")
                 
-                # Probabilités des sentiments
-                probabilities_chart = create_sentiment_probabilities_chart(analyzer.history)
-                if probabilities_chart:
-                    st.plotly_chart(probabilities_chart, use_container_width=True)
+                st.markdown("### Analyse du texte")
+                st.dataframe(length_stats, hide_index=True)
 
-if __name__ == "__main__":
-    main()
+            with col2:
+                st.plotly_chart(plot_confidence_distribution(proba))
+
+        if save_btn and example_review:
+            if 'saved_reviews' not in st.session_state:
+                st.session_state.saved_reviews = []
+            st.session_state.saved_reviews.append(example_review)
+            st.success("Avis sauvegardé!")
+
+        if export_btn and 'saved_reviews' in st.session_state:
+            df = pd.DataFrame(st.session_state.saved_reviews, columns=['review'])
+            st.download_button(
+                "📥 Télécharger les avis sauvegardés",
+                df.to_csv(index=False),
+                "avis_sauvegardes.csv",
+                "text/csv"
+            )
+
+    with tab2:
+        st.subheader("Prédiction en Masse")
+        uploaded_file = st.file_uploader("Télécharger un fichier CSV", type=['csv'])
+        
+        if uploaded_file is not None:
+            data = pd.read_csv(uploaded_file)
+            if 'review' in data.columns:
+                progress_bar = st.progress(0)
+                predictions = []
+                probabilities = []
+                
+                for i, review in enumerate(data['review']):
+                    prob = model.predict_proba(vectorizer.transform([review]))[0]
+                    sentiment_label, confidence = get_prediction_label(prob)
+                    predictions.append(sentiment_label)
+                    probabilities.append(confidence)
+                    progress_bar.progress((i + 1) / len(data))
+                
+                data['prediction'] = predictions
+                data['confidence'] = [p * 100 for p in probabilities]
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    fig = px.pie(data, names='prediction', title='Distribution des Prédictions')
+                    st.plotly_chart(fig)
+                
+                with col2:
+                    fig = px.histogram(data, x='confidence', title='Distribution des Niveaux de Confiance')
+                    st.plotly_chart(fig)
+                
+                st.dataframe(data)
+                st.download_button("Télécharger les Résultats", data.to_csv(index=False), "resultats.csv", "text/csv")
+            else:
+                st.error("Le fichier CSV doit contenir une colonne 'review'.")
+
+    with tab3:
+        if 'prediction_history' in st.session_state and st.session_state.prediction_history:
+            st.subheader("Historique des Prédictions")
+            
+            history_df = pd.DataFrame(st.session_state.prediction_history)
+            
+            fig = px.line(history_df, x='timestamp', y='confidence', 
+                         title='Évolution de la Confiance')
+            st.plotly_chart(fig)
+            
+            pred_counts = history_df['prediction'].value_counts()
+            fig = px.pie(values=pred_counts.values, names=pred_counts.index, 
+                        title='Distribution des Prédictions')
+            st.plotly_chart(fig)
+            
+            if st.button("🗑️ Effacer l'historique"):
+                st.session_state.prediction_history = []
+                st.experimental_rerun()
+        else:
+            st.info("Aucun historique disponible. Commencez à faire des prédictions!")
+
+except FileNotFoundError as e:
+    st.error(f"❌ Erreur: Fichier non trouvé\n{str(e)}")
+except Exception as e:
+    st.error(f"❌ Une erreur s'est produite: {str(e)}")
+
+# Footer
+st.markdown("---")
+st.markdown("*Développé par ENIAD*")
