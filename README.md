@@ -24,28 +24,24 @@ This project aims to classify Yelp customer reviews into **sentiment categories*
 
 ## <div align="center">Project Structure</div>
 
-```plaintext
-Customer-Reviews-Classification/
-├── data/
-│   ├── raw/                # Raw Yelp dataset (subset)
-│   ├── processed/          # Processed data (features and labels)
-├── notebooks/
-│   ├── 1_data_preprocessing.ipynb    # Data cleaning and preprocessing steps
-│   ├── 2_classical_ML_models.ipynb   # Training and evaluation of classical ML models
-│   ├── 3_transfer_learning_models.ipynb # Fine-tuning and evaluation of transfer learning models
-│   ├── 4_evaluation_comparison.ipynb # Comparative analysis of all models
-├── models/
-│   ├── classical_ml/       # Trained classical ML models
-│   │   ├── logistic_regression.pkl
-│   │   ├── svm_model.pkl
-│   ├── transfer_learning/  # Fine-tuned transformer models
-│       ├── roberta_model/
-│       ├── xlnet_model/
-├── reports/
-│   ├── presentation.pptx   # Final presentation slides
-│   ├── final_report.pdf    # Comprehensive final report
-├── requirements.txt        # Dependencies for the project
-├── README.md               # Project documentation
+```mermaid
+graph TD;
+    A[Project Root] -->|Contains| B[data];
+    A --> C[notebooks];
+    A --> D[models];
+    A --> E[reports];
+    A --> F[requirements.txt];
+    A --> G[README.md];
+    B -->|Raw Dataset| B1[raw/];
+    B -->|Processed Data| B2[processed/];
+    C -->|Preprocessing| C1[1_data_preprocessing.ipynb];
+    C -->|Classical ML Models| C2[2_classical_ML_models.ipynb];
+    C -->|Transfer Learning| C3[3_transfer_learning_models.ipynb];
+    C -->|Evaluation| C4[4_evaluation_comparison.ipynb];
+    D -->|Classical Models| D1[classical_ml/];
+    D -->|Transfer Learning| D2[transfer_learning/];
+    E -->|Presentation| E1[presentation.pptx];
+    E -->|Final Report| E2[final_report.pdf];
 ```
 
 ---
@@ -55,7 +51,7 @@ Customer-Reviews-Classification/
 1. **Clone the Repository**
    ```bash
    git clone https://github.com/ennajari/Customer-Reviews-Classification.git
-   cd Yelp_Review_Classification
+   cd Customer-Reviews-Classification
    ```
 
 2. **Install Dependencies**
@@ -91,7 +87,6 @@ Customer-Reviews-Classification/
 | SVM                  | 91.0%    | 90.0%     | 88.0%  | 89.0%    |
 | RoBERTa              | 85.0%    | 84.0%     | 83.0%  | 83.0%    |
 | XLNet                | 84.0%    | 83.0%     | 82.0%  | 82.0%    |
-
 
 ---
 
